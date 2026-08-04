@@ -1,0 +1,7 @@
+# DLP Pipeline — Python standard library only.
+# No third-party dependencies required.
+#
+# Python >= 3.10 is required for:
+#   - dataclasses with list[T] field annotations
+#   - match statements (not used, but available)
+#   - from __future__ import annotations backfills 3.9 support if needed
