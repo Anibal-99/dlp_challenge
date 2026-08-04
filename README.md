@@ -2,6 +2,7 @@
 Un script de Python con calidad de producción que lee registros de auditoría de seguridad de Google Cloud y Google Workspace, correlaciona eventos relacionados en incidentes, calcula una puntuación de riesgo explicable para cada incidente y exporta un informe priorizado.
 
 Desarrollado como una implementación del RFC: Data Loss Prevention para Colibrí, una fintech que opera sobre Google Workspace y GCP.
+
 **RFC:** [R.F.C — Data Loss Prevention (Google Docs)](https://docs.google.com/document/d/1c8lxG3ljbUn2aL6Cp-s24CK7QlsfLAxCBssqafkyNKQ/edit?usp=sharing)
 
 ---
