@@ -1,9 +1,7 @@
-# DLP Audit Log Analyzer
+# Analizador de Registros de Auditoría DLP
+Un script de Python con calidad de producción que lee registros de auditoría de seguridad de Google Cloud y Google Workspace, correlaciona eventos relacionados en incidentes, calcula una puntuación de riesgo explicable para cada incidente y exporta un informe priorizado.
 
-A production-quality Python script that reads Google Cloud / Google Workspace security audit logs, correlates related events into incidents, computes an explainable risk score for each incident, and exports a prioritized report.
-
-Built as an implementation of the RFC: Data Loss Prevention for Colibrí, a fintech running on Google Workspace and GCP.
-
+Desarrollado como una implementación del RFC: Data Loss Prevention para Colibrí, una fintech que opera sobre Google Workspace y GCP.
 **RFC:** [R.F.C — Data Loss Prevention (Google Docs)](https://docs.google.com/document/d/1c8lxG3ljbUn2aL6Cp-s24CK7QlsfLAxCBssqafkyNKQ/edit?usp=sharing)
 
 ---
@@ -91,29 +89,27 @@ correlator.py  ──►  list[Incident]          (events grouped by pattern)
 
 ---
 
-## How Correlation Works
+## Cómo Funciona la Correlación
 
-Events are grouped into incidents using two rules. Each event belongs to exactly one incident.
+Los eventos se agrupan en incidentes utilizando dos reglas. Cada evento pertenece exactamente a un único incidente.
+### Campaña geográfica (ventana de 48 horas)
 
-### Rule 1 — Geographic campaign (48-hour window)
+Los eventos dirigidos al mismo recurso desde el mismo país dentro de una ventana de 48 horas se agrupan en un mismo incidente.
 
-Events targeting the **same resource from the same country** within 48 hours are grouped together.
+Este patrón permite detectar ataques regionales coordinados o ubicaciones geográficas comprometidas que acceden repetidamente a un recurso sensible (por ejemplo, 15 eventos provenientes de China dirigidos a resource2 en un período de 48 horas).
 
-This pattern detects coordinated regional attacks or compromised geographic locations repeatedly accessing a sensitive resource (e.g., 15 events from China targeting `resource2` in a 48-hour window).
+### Rule 2 — Campaña por destino (ventana de 48 horas)
 
-### Rule 2 — Destination campaign (48-hour window)
+Los eventos que comparten el mismo destino externo con un alcance de compartición public o external dentro de una ventana de 48 horas se agrupan en un mismo incidente.
 
-Events sharing the **same external destination** with a `public` or `external` sharing scope within 48 hours are grouped together.
+Este patrón detecta intentos repetidos de exfiltración de datos hacia un mismo destino externo desde múltiples orígenes (por ejemplo, varios usuarios enviando información a External Email con alcance público en un corto período de tiempo).
 
-This pattern detects repeated data exfiltration to the same external endpoint from multiple sources (e.g., multiple users sending data to `External Email` with public scope in a short window).
+### Caso por defecto
 
-### Fallback
+Cualquier evento que no coincida con ninguna de las reglas anteriores se convierte en un incidente individual.
+### Configuración
 
-Any event not matched by either rule becomes a single-event incident on its own.
-
-### Configuration
-
-Time windows are named constants at the top of `src/correlator.py`:
+Las ventanas de tiempo se definen como constantes al inicio de `src/correlator.py`:
 
 ```python
 GEOGRAPHIC_WINDOW_HOURS: int = 48
@@ -122,9 +118,9 @@ DESTINATION_WINDOW_HOURS: int = 48
 
 ---
 
-## How the Risk Score Works
+## Cómo Funciona el Puntaje de Riesgo
 
-Each incident receives a score between 0 and 100. The score is built incrementally by evaluating nine independent signals. Each signal that fires adds points and appends a human-readable reason to the incident.
+Cada incidente recibe un puntaje entre 0 y 100. Este puntaje se construye de forma incremental evaluando nueve señales independientes. Cada señal que se activa suma puntos y agrega una explicación legible a la lista de razones del incidente.
 
 | # | Signal | Max pts | What it captures |
 |---|---|---|---|
@@ -138,9 +134,8 @@ Each incident receives a score between 0 and 100. The score is built incremental
 | 8 | Weak authentication (password only) | 5 | No MFA or SSO |
 | 9 | Correlation depth (5+ / 3+ / 2 events) | 15 / 10 / 5 | Campaign indicator |
 
-The final score is capped at 100.
-
-### Severity thresholds
+El puntaje final está limitado a un máximo de 100.
+### Umbrales de severidad
 
 | Severity | Score |
 |---|---|
@@ -149,7 +144,7 @@ The final score is capped at 100.
 | Medium | ≥ 25 |
 | Low | < 25 |
 
-Thresholds are defined as a single dict in `src/scorer.py`:
+Los umbrales se definen mediante un único diccionario en `src/scorer.py`:
 
 ```python
 SEVERITY_THRESHOLDS: dict[str, int] = {
@@ -160,7 +155,7 @@ SEVERITY_THRESHOLDS: dict[str, int] = {
 }
 ```
 
-### Example output row
+### Ejemplo de una fila del reporte
 
 ```
 incident_id  risk_score  severity  user_email              resource_name  service      events_correlated  reasons
@@ -169,9 +164,9 @@ INC-00001    100         Critical  user@example.com        resource2      BigQue
 
 ---
 
-## Output Format
+## Formato de Salida
 
-`output/prioritized_incidents.csv` — one row per incident, sorted by `risk_score` descending.
+`output/prioritized_incidents.csv` — una fila por incidente, ordenados de forma descendente según `risk_score`.
 
 | Column | Description |
 |---|---|
@@ -187,25 +182,9 @@ INC-00001    100         Critical  user@example.com        resource2      BigQue
 
 ---
 
-## Assumptions
-
-- Both input files contain the same columns. The parser validates required fields and skips malformed records with a warning.
-- `event_id` values are unique within each file. They are used to track which events have been assigned to an incident during correlation.
-- The two provided datasets (JSON and CSV) are structurally identical but independently generated — they contain different records. This is consistent with synthetic challenge data.
-- Timestamps are assumed to be UTC (format: `YYYY-MM-DDTHH:MM:SSZ`).
-- The scoring model is intentionally conservative at the single-event level. Scores rise sharply when multiple signals fire together, which is by design — the RFC's goal is to reduce false positives by requiring multiple signals before high-severity classification.
-
----
-
-## Possible Future Improvements
-
-| Area | Improvement |
-|---|---|
-| Correlation | Add a user-behavior rule when the dataset contains repeat users |
-| Correlation | Support configurable rules via a YAML/JSON config file |
-| Scoring | Load signal weights from external config to allow tuning without code changes |
-| Output | Add JSON and SIEM-compatible (CEF/LEEF) output formats |
-| Output | Generate a summary HTML report with incident counts by severity |
-| Observability | Emit structured JSON logs for ingestion into Cloud Logging |
-| Testing | Add unit tests for parser coercions, scorer signals, and correlator rules |
-| Scale | Stream large files instead of loading into memory (for logs >1 GB) |
+## Supuestos
+- Ambos archivos de entrada contienen las mismas columnas. El parser valida los campos obligatorios y omite los registros malformados mostrando una advertencia.
+- Los valores de event_id son únicos dentro de cada archivo. Se utilizan para controlar qué eventos ya fueron asignados a un incidente durante el proceso de correlación.
+- Los dos conjuntos de datos proporcionados (JSON y CSV) son estructuralmente idénticos, pero fueron generados de manera independiente; por lo tanto, contienen registros distintos. Esto es consistente con un conjunto de datos sintético para el challenge.
+- Se asume que todas las marcas de tiempo están en UTC (formato: YYYY-MM-DDTHH:MM:SSZ).
+- El modelo de puntuación es intencionalmente conservador para incidentes de un solo evento. El puntaje aumenta considerablemente cuando múltiples señales se activan simultáneamente, ya que el objetivo del RFC es reducir los falsos positivos exigiendo varias evidencias antes de clasificar un incidente con alta severidad.
