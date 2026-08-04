@@ -2,7 +2,9 @@
 
 A production-quality Python script that reads Google Cloud / Google Workspace security audit logs, correlates related events into incidents, computes an explainable risk score for each incident, and exports a prioritized report.
 
-Built as an implementation of the [RFC: Data Loss Prevention for Colibrí](./RFC.md), a fintech running on Google Workspace and GCP.
+Built as an implementation of the RFC: Data Loss Prevention for Colibrí, a fintech running on Google Workspace and GCP.
+
+**RFC:** [R.F.C — Data Loss Prevention (Google Docs)](https://docs.google.com/document/d/1c8lxG3ljbUn2aL6Cp-s24CK7QlsfLAxCBssqafkyNKQ/edit?usp=sharing)
 
 ---
 
