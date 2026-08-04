@@ -1,4 +1,4 @@
-# Analizador de Registros de Auditoría DLP
+# DLP
 Un script de Python con calidad de producción que lee registros de auditoría de seguridad de Google Cloud y Google Workspace, correlaciona eventos relacionados en incidentes, calcula una puntuación de riesgo explicable para cada incidente y exporta un informe priorizado.
 
 Desarrollado como una implementación del RFC: Data Loss Prevention para Colibrí, una fintech que opera sobre Google Workspace y GCP.
